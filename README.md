@@ -1,13 +1,7 @@
-# Sample Hardhat Project
+# DAO
+### DAO smart-contract
+Staking smart-contract address: https://holesky.etherscan.io/address/0xB37E9fd41f25B43A5D78Dd61Aa913aF118D8A965
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a Hardhat Ignition module that deploys that contract.
+raw address: 0xB37E9fd41f25B43A5D78Dd61Aa913aF118D8A965
 
-Try running some of the following tasks:
-
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat ignition deploy ./ignition/modules/Lock.ts
-```
+verification: https://holesky.etherscan.io/address/0xB37E9fd41f25B43A5D78Dd61Aa913aF118D8A965#code

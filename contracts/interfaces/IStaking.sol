@@ -8,6 +8,7 @@ interface IStaking {
     event SetNewRewardRate(uint256 _rewardRate);
     event SetNewStakeLockTime(uint256 _stakeLockTime);
     event SetNewUnstakeLockTime(uint256 _unstakeLockTime);
+    event SetAdmin(address _from, address _to);
 
     function setNewUnstakeLockTime(uint256 _unstakeLockTime) external;
     function setNewStakeLockTime(uint256 _stakeLockTime) external;

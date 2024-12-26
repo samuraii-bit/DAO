@@ -33,6 +33,11 @@ contract Staking is IStaking, AccessControl {
         rewardToken = IVoteToken(_rewardToken);
         lpToken = IERC20(_lpToken);
     }
+
+    function setAdmin(address _to) external onlyRole(ADMIN_ROLE) {
+        _grantRole(ADMIN_ROLE, _to);
+        emit SetAdmin(msg.sender, _to);
+    }
     
     function stake(uint256 _amount) external {
         require(_amount > 0, "Amount must be greater than 0");

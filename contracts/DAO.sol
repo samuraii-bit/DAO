@@ -7,6 +7,7 @@ import "./interfaces/IVoteToken.sol";
 
 contract DAO is IDAO, AccessControl {
     bytes32 public constant CHAIRMAN_ROLE = keccak256("CHAIRMAN_ROLE");
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     
     uint8 public constant changeRewardRate = 1;
     uint8 public constant changeStakeLockTime = 2;
@@ -36,11 +37,18 @@ contract DAO is IDAO, AccessControl {
     mapping (address => uint256) public depositOf;
     mapping (address => uint256[]) private votingsOfVoter;
 
-    constructor(uint256 _finishLockTime, address _voteTokenAddress) {
+    constructor(uint256 _finishLockTime, address _voteTokenAddress, address _stakingContractAddress) {
         totalVotings = 0;
         finishLockTime = _finishLockTime;
         voteToken = IVoteToken(_voteTokenAddress);
+        staking = IStaking(_stakingContractAddress);
         _grantRole(CHAIRMAN_ROLE, msg.sender);
+        _grantRole(ADMIN_ROLE, msg.sender);
+    }
+
+    function setChairman (address _to) external onlyRole(ADMIN_ROLE) {
+        _grantRole(CHAIRMAN_ROLE, _to);
+        emit SetChairman(msg.sender, _to);
     }
     
     function deposit(uint256 _amount) external {
@@ -52,12 +60,11 @@ contract DAO is IDAO, AccessControl {
 
     function vote(uint256 _votingId, uint256 _amount, bool _vote) public {
         require(
-                votings[_votingId].finished == false ||
-                block.timestamp < votings[_votingId].startTime + finishLockTime, 
+                votings[_votingId].finished == false, 
                 "Voting already finished"
                 );
         require(
-                _amount >= (depositOf[msg.sender] - votings[_votingId].totalVotes[msg.sender]), 
+                _amount <= (depositOf[msg.sender] - votings[_votingId].totalVotes[msg.sender]), 
                 "U dont have deposit enough"
                 );
 
@@ -84,13 +91,13 @@ contract DAO is IDAO, AccessControl {
             else if (votings[_votingId].proposal.proposalType == changeStakeLockTime) {
                 staking.setNewStakeLockTime(votings[_votingId].proposal.proposalNum);
             } 
-            else if (votings[_votingId].proposal.proposalType == changeUnstakeLockTime) {
+            else {
                 staking.setNewUnstakeLockTime(votings[_votingId].proposal.proposalNum);
             }
         }
 
         votings[_votingId].finished = true;
-        emit Finish(_votingId, votings[_votingId].proposal.proposalType, votings[_votingId].proposal.proposalNum);
+        emit Finish(msg.sender, _votingId, votings[_votingId].proposal.proposalType, votings[_votingId].proposal.proposalNum);
     }
 
     function withdraw() external {
