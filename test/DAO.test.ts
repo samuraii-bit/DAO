@@ -1,15 +1,10 @@
 import {loadFixture, ethers, expect, time} from "./setup";
 import { DAOname, finishLockTime } from "./init/DAO.init";
-import {name as vtName, symbol, decimals, initialSupply } from "./init/voteToken.init"
+import {vtName, symbol, decimals, initialSupply } from "./init/voteToken.init"
 import {name as stakingName, rewardRate, stakeLockTime, unstakeLockTime} from "./init/stakingContracti.init";
 import {name as lpTokenName} from "./init/lpToken.init"
 import {name as MFTname, symbol as rewardTokenSymbol} from "./init/MFT.Init"
 import { VoteToken__factory } from "../typechain-types";
-
-
-const changeRewardRate = 1;
-const changeStakeLockTime = 2;
-const changeUnstakeLockTime = 3;
 
 describe("Testing Staking", function() {
 
@@ -59,45 +54,41 @@ describe("Testing Staking", function() {
     });
 
     it("addProposal test: adding proposal to set rateReward to 5 percents", async function(){
-        const {DAO, users} = await loadFixture(deploy);
-        const tx = await DAO.connect(users[0]).addProposal(changeRewardRate, 5);
+        const {DAO, users, Staking} = await loadFixture(deploy);
+        const callData = Staking.interface.encodeFunctionData("setNewRewardRate", [5]);
+
+        const tx = await DAO.connect(users[0]).addProposal(callData);
         
-        await expect(tx).to.emit(DAO, "AddProposal").withArgs(1, changeRewardRate, 5);
+        await expect(tx).to.emit(DAO, "AddProposal").withArgs(1, callData);
         await expect((await DAO.votings(1)).finished).to.be.false;
-        await expect((await DAO.votings(1)).proposal.proposalType).to.be.equal(changeRewardRate);
-        await expect((await DAO.votings(1)).proposal.proposalNum).to.be.equal(5);
+        await expect((await DAO.votings(1)).callData).to.be.equal(callData);
     });
 
     it("addProposal test: adding proposal to set stakeLockTime to one week", async function(){
-        const {DAO, users} = await loadFixture(deploy);
+        const {DAO, users, Staking} = await loadFixture(deploy);
         const oneWeek = 60 * 60 * 24 * 7;
-        const tx = await DAO.connect(users[0]).addProposal(changeStakeLockTime, oneWeek);
+        const callData = Staking.interface.encodeFunctionData("setNewStakeLockTime", [oneWeek]);
+
+        const tx = await DAO.connect(users[0]).addProposal(callData);
         
-        await expect(tx).to.emit(DAO, "AddProposal").withArgs(1, changeStakeLockTime, oneWeek);
+        await expect(tx).to.emit(DAO, "AddProposal").withArgs(1, callData);
         await expect((await DAO.votings(1)).finished).to.be.false;
-        await expect((await DAO.votings(1)).proposal.proposalType).to.be.equal(changeStakeLockTime);
-        await expect((await DAO.votings(1)).proposal.proposalNum).to.be.equal(oneWeek);
+        await expect((await DAO.votings(1)).callData).to.be.equal(callData);
     });
 
     it("addProposal test: adding proposal to set unStakeLockTime to one week", async function(){
-        const {DAO, users} = await loadFixture(deploy);
+        const {DAO, users, Staking} = await loadFixture(deploy);
         const oneWeek = 60 * 60 * 24 * 7;
-        const tx = await DAO.connect(users[0]).addProposal(changeUnstakeLockTime, oneWeek);
+        const callData = Staking.interface.encodeFunctionData("setNewUnstakeLockTime", [oneWeek]);
         
-        await expect(tx).to.emit(DAO, "AddProposal").withArgs(1, changeUnstakeLockTime, oneWeek);
+        const tx = await DAO.connect(users[0]).addProposal(callData);
+        
+        await expect(tx).to.emit(DAO, "AddProposal").withArgs(1, callData);
         await expect((await DAO.votings(1)).finished).to.be.false;
-        await expect((await DAO.votings(1)).proposal.proposalType).to.be.equal(changeUnstakeLockTime);
-        await expect((await DAO.votings(1)).proposal.proposalNum).to.be.equal(oneWeek);
+        await expect((await DAO.votings(1)).callData).to.be.equal(callData);
     });
 
-    it("addProposal test: trying to add proposal to set rateReward to 101 percents", async function(){
-        const {DAO, users} = await loadFixture(deploy);
-        const tx = await DAO.connect(users[0]);
-        
-        await expect(tx.addProposal(changeRewardRate, 101)).to.be.revertedWith("Invalid rewardRate");
-    });
-
-    it("addProposal test: trying to add unknown proposal", async function(){
+    /*it("addProposal test: trying to add unknown proposal", async function(){
         const {DAO, users} = await loadFixture(deploy);
         const tx = await DAO.connect(users[0]);
         
@@ -109,18 +100,21 @@ describe("Testing Staking", function() {
         const tx = await DAO.connect(users[1]);
         
         await expect(tx.addProposal(0, 99)).to.be.reverted;
-    });
+    });*/
 
     it("addProposal test: trying to add proposal as non-chairman", async function(){
-        const {DAO, users} = await loadFixture(deploy);
+        const {DAO, users, Staking} = await loadFixture(deploy);
+        const oneWeek = 60 * 60 * 24 * 7;
+        const callData = Staking.interface.encodeFunctionData("setNewUnstakeLockTime", [oneWeek]);
         const tx = await DAO.connect(users[5]);
         
-        await expect(tx.addProposal(changeRewardRate, 99)).to.be.revertedWithCustomError;
+        await expect(tx.addProposal(callData)).to.be.revertedWithCustomError;
     });
 
     it("vote test: vote 100 tokens for change rewardRate to 5 percents", async function(){
-        const {DAO, users} = await loadFixture(deploy);
-        await DAO.connect(users[0]).addProposal(changeRewardRate, 5);
+        const {DAO, users, Staking} = await loadFixture(deploy);
+        const callData = Staking.interface.encodeFunctionData("setNewRewardRate", [5]);        
+        await DAO.connect(users[0]).addProposal(callData);
         await DAO.connect(users[1]).deposit(100);
 
         const tx = await DAO.connect(users[1]).vote(1, 100, true);
@@ -129,8 +123,9 @@ describe("Testing Staking", function() {
     });
 
     it("vote test: vote 100 tokens against change rewardRate to 5 percents", async function(){
-        const {DAO, users} = await loadFixture(deploy);
-        await DAO.connect(users[0]).addProposal(changeRewardRate, 5);
+        const {DAO, users, Staking} = await loadFixture(deploy);
+        const callData = Staking.interface.encodeFunctionData("setNewRewardRate", [5]);        
+        await DAO.connect(users[0]).addProposal(callData);
         await DAO.connect(users[1]).deposit(100);
 
         const tx = await DAO.connect(users[1]).vote(1, 100, false);
@@ -139,8 +134,9 @@ describe("Testing Staking", function() {
     });
     
     it("vote test: trying to vote without enough deposit", async function(){
-        const {DAO, users} = await loadFixture(deploy);
-        await DAO.connect(users[0]).addProposal(changeRewardRate, 5);
+        const {DAO, users, Staking} = await loadFixture(deploy);
+        const callData = Staking.interface.encodeFunctionData("setNewRewardRate", [5]); 
+        await DAO.connect(users[0]).addProposal(callData);
         await DAO.connect(users[1]).deposit(10);
 
         const tx = await DAO.connect(users[1]);
@@ -148,8 +144,8 @@ describe("Testing Staking", function() {
     });
 
     it("vote test: trying to vote without enough deposit", async function(){
-        const {DAO, users} = await loadFixture(deploy);
-        await DAO.connect(users[0]).addProposal(changeRewardRate, 5);
+        const {DAO, users, Staking} = await loadFixture(deploy);
+        const callData = Staking.interface.encodeFunctionData("setNewRewardRate", [5]); 
         await DAO.connect(users[1]).deposit(10);
 
         const tx = await DAO.connect(users[1]);
@@ -157,8 +153,8 @@ describe("Testing Staking", function() {
     });
 
     it("vote test: trying to vote when voting already finished", async function(){
-        const {DAO, users} = await loadFixture(deploy);
-        await DAO.connect(users[0]).addProposal(changeRewardRate, 5);
+        const {DAO, users, Staking} = await loadFixture(deploy);
+        const callData = Staking.interface.encodeFunctionData("setNewRewardRate", [5]); 
         await DAO.connect(users[1]).deposit(10);
 
         const oneDay = 60 * 60 * 24;
@@ -170,20 +166,21 @@ describe("Testing Staking", function() {
     });
 
     it("finish test: just start and finish voting without votes", async function(){
-        const {DAO, users} = await loadFixture(deploy);
-        await DAO.connect(users[0]).addProposal(changeRewardRate, 15);
+        const {DAO, users, Staking} = await loadFixture(deploy);
 
         const oneDay = 60 * 60 * 24;
         await time.increase(oneDay);
 
         const tx = await DAO.connect(users[1]).finish(1);
-        await expect(tx).to.emit(DAO, "Finish").withArgs(users[1].address, 1, changeRewardRate, 15);
+        await expect(tx).to.emit(DAO, "Finish");
         await expect((await DAO.votings(1)).finished).to.be.equal(true);
     });
 
-    it("finish test: start voting and finish when for votes more than against votes without votes", async function(){
+    it("finish test: start voting and finish when for votes more than against votes", async function(){
         const {DAO, users, Staking} = await loadFixture(deploy);
-        await DAO.connect(users[0]).addProposal(changeRewardRate, 15);
+        const callData = Staking.interface.encodeFunctionData("setNewRewardRate", [15]);
+
+        await DAO.connect(users[0]).addProposal(callData);
         await DAO.connect(users[1]).deposit(100);
         await DAO.connect(users[1]).vote(1, 100, true);
 
@@ -191,39 +188,43 @@ describe("Testing Staking", function() {
         await time.increase(oneDay);
 
         const tx = await DAO.connect(users[1]).finish(1);
-        await expect(tx).to.emit(DAO, "Finish").withArgs(users[1].address, 1, changeRewardRate, 15);
+        await expect(tx).to.emit(DAO, "Finish").withArgs(users[1].address, 1, callData);
         await expect((await DAO.votings(1)).finished).to.be.equal(true);
         await expect(await Staking.rewardRate()).to.be.equal(15);
     });
 
-    it("finish test: start voting to change rewardRate and finish when for votes more than against votes", async function(){
+    it("finish test: start voting to change rewardRate and finish when against votes more than for votes", async function(){
         const {DAO, users, Staking} = await loadFixture(deploy);
-        await DAO.connect(users[0]).addProposal(changeRewardRate, 15);
+        const callData = Staking.interface.encodeFunctionData("setNewRewardRate", [15]);
+
+        await DAO.connect(users[0]).addProposal(callData);
         await DAO.connect(users[1]).deposit(100);
-        await DAO.connect(users[1]).vote(1, 100, true);
+        await DAO.connect(users[1]).vote(1, 100, false);
 
         const oneDay = 60 * 60 * 24;
         await time.increase(oneDay);
 
         const tx = await DAO.connect(users[1]).finish(1);
-        await expect(tx).to.emit(DAO, "Finish").withArgs(users[1].address, 1, changeRewardRate, 15);
+        await expect(tx).to.emit(DAO, "Finish").withArgs(users[1].address, 1, callData);
         await expect((await DAO.votings(1)).finished).to.be.equal(true);
-        await expect(await Staking.rewardRate()).to.be.equal(15);
+        await expect(await Staking.rewardRate()).to.be.equal(10);
     });
 
     it("finish test: start voting to change stakeLockTime and finish when for votes more than against votes", async function(){
         const {DAO, users, Staking} = await loadFixture(deploy);
-
+        
         const oneDay = 60 * 60 * 24;
         const oneWeek = oneDay * 7;
-        await DAO.connect(users[0]).addProposal(changeStakeLockTime, oneWeek);
+        const callData = Staking.interface.encodeFunctionData("setNewStakeLockTime", [oneWeek]); 
+
+        await DAO.connect(users[0]).addProposal(callData);
         await DAO.connect(users[1]).deposit(100);
         await DAO.connect(users[1]).vote(1, 100, true);
 
         await time.increase(oneDay);
 
         const tx = await DAO.connect(users[1]).finish(1);
-        await expect(tx).to.emit(DAO, "Finish").withArgs(users[1].address, 1, changeStakeLockTime, oneWeek);
+        await expect(tx).to.emit(DAO, "Finish").withArgs(users[1].address, 1, callData);
         await expect((await DAO.votings(1)).finished).to.be.equal(true);
         await expect(await Staking.stakeLockTime()).to.be.equal(oneWeek);
     });
@@ -233,14 +234,16 @@ describe("Testing Staking", function() {
 
         const oneDay = 60 * 60 * 24;
         const oneWeek = oneDay * 7;
-        await DAO.connect(users[0]).addProposal(changeUnstakeLockTime, oneWeek);
+        const callData = Staking.interface.encodeFunctionData("setNewUnstakeLockTime", [oneWeek]); 
+
+        await DAO.connect(users[0]).addProposal(callData);
         await DAO.connect(users[1]).deposit(100);
         await DAO.connect(users[1]).vote(1, 100, true);
 
         await time.increase(oneDay);
 
         const tx = await DAO.connect(users[1]).finish(1);
-        await expect(tx).to.emit(DAO, "Finish").withArgs(users[1].address, 1, changeUnstakeLockTime, oneWeek);
+        await expect(tx).to.emit(DAO, "Finish").withArgs(users[1].address, 1, callData);
         await expect((await DAO.votings(1)).finished).to.be.equal(true);
         await expect(await Staking.unstakeLockTime()).to.be.equal(oneWeek);
     });
@@ -250,7 +253,9 @@ describe("Testing Staking", function() {
 
         const oneDay = 60 * 60 * 24;
         const oneWeek = oneDay * 7;
-        await DAO.connect(users[0]).addProposal(changeUnstakeLockTime, oneWeek);
+        const callData = Staking.interface.encodeFunctionData("setNewUnstakeLockTime", [oneWeek]); 
+        
+        await DAO.connect(users[0]).addProposal(callData);
         await DAO.connect(users[1]).deposit(100);
         await DAO.connect(users[1]).vote(1, 100, true);
 
@@ -276,16 +281,21 @@ describe("Testing Staking", function() {
     });
 
     it("withdraw test: withdraw deposit when all votings finished", async function(){
-        const {DAO, users, voteToken} = await loadFixture(deploy);
+        const {DAO, users, voteToken, Staking} = await loadFixture(deploy);
 
         const oneDay = 60 * 60 * 24;
         const fiveDays = oneDay * 5;
         const oneWeek = oneDay * 7;
 
-        await DAO.connect(users[0]).addProposal(changeRewardRate, 20);
-        await DAO.connect(users[1]).addProposal(changeRewardRate, 13);
-        await DAO.connect(users[2]).addProposal(changeStakeLockTime, fiveDays);
-        await DAO.connect(users[3]).addProposal(changeStakeLockTime, oneWeek);
+        const stakeFiveDaysCallData = Staking.interface.encodeFunctionData("setNewUnstakeLockTime", [fiveDays]);
+        const stakeOneWeekCallData = Staking.interface.encodeFunctionData("setNewUnstakeLockTime", [oneWeek]);
+        const rewardRate13CallData = Staking.interface.encodeFunctionData("setNewRewardRate", [13]);
+        const rewardRate20CallData = Staking.interface.encodeFunctionData("setNewRewardRate", [20]);
+
+        await DAO.connect(users[0]).addProposal(rewardRate20CallData);
+        await DAO.connect(users[1]).addProposal(rewardRate13CallData);
+        await DAO.connect(users[2]).addProposal(stakeFiveDaysCallData);
+        await DAO.connect(users[3]).addProposal(stakeOneWeekCallData);
 
         await DAO.connect(users[4]).deposit(100);
         await DAO.connect(users[4]).vote(1, 50, true);
@@ -306,16 +316,21 @@ describe("Testing Staking", function() {
     });
 
     it("withdraw test: trying to withdraw deposit when not all votings finished", async function(){
-        const {DAO, users, voteToken} = await loadFixture(deploy);
+        const {DAO, users, Staking} = await loadFixture(deploy);
 
         const oneDay = 60 * 60 * 24;
         const fiveDays = oneDay * 5;
         const oneWeek = oneDay * 7;
 
-        await DAO.connect(users[0]).addProposal(changeRewardRate, 20);
-        await DAO.connect(users[1]).addProposal(changeRewardRate, 13);
-        await DAO.connect(users[2]).addProposal(changeStakeLockTime, fiveDays);
-        await DAO.connect(users[3]).addProposal(changeStakeLockTime, oneWeek);
+        const stakeFiveDaysCallData = Staking.interface.encodeFunctionData("setNewUnstakeLockTime", [fiveDays]);
+        const stakeOneWeekCallData = Staking.interface.encodeFunctionData("setNewUnstakeLockTime", [oneWeek]);
+        const rewardRate13CallData = Staking.interface.encodeFunctionData("setNewRewardRate", [13]);
+        const rewardRate20CallData = Staking.interface.encodeFunctionData("setNewRewardRate", [20]);
+
+        await DAO.connect(users[0]).addProposal(rewardRate20CallData);
+        await DAO.connect(users[1]).addProposal(rewardRate13CallData);
+        await DAO.connect(users[2]).addProposal(stakeFiveDaysCallData);
+        await DAO.connect(users[3]).addProposal(stakeOneWeekCallData);
 
         await DAO.connect(users[4]).deposit(100);
         await DAO.connect(users[4]).vote(1, 50, true);

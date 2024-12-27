@@ -1,7 +1,7 @@
 # DAO
 ### DAO smart-contract
-Staking smart-contract address: https://holesky.etherscan.io/address/0xB37E9fd41f25B43A5D78Dd61Aa913aF118D8A965
+Staking smart-contract address: https://holesky.etherscan.io/address/0x2ebB6BbC3B72db5115774fca0e08E1e7C812bA64
 
-raw address: 0xB37E9fd41f25B43A5D78Dd61Aa913aF118D8A965
+raw address: 0x2ebB6BbC3B72db5115774fca0e08E1e7C812bA64
 
-verification: https://holesky.etherscan.io/address/0xB37E9fd41f25B43A5D78Dd61Aa913aF118D8A965#code
+verification: https://holesky.etherscan.io/address/0x2ebB6BbC3B72db5115774fca0e08E1e7C812bA64#code

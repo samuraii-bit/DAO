@@ -8,28 +8,26 @@ import "./interfaces/IVoteToken.sol";
 contract DAO is IDAO, AccessControl {
     bytes32 public constant CHAIRMAN_ROLE = keccak256("CHAIRMAN_ROLE");
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-    
-    uint8 public constant changeRewardRate = 1;
-    uint8 public constant changeStakeLockTime = 2;
-    uint8 public constant changeUnstakeLockTime = 3;
 
+    event Deposit(address _to, uint256 _amount);
+    event Vote(address _voter, uint256 _votingId, bool _vote, uint256 _amount);
+    event Finish(address _from, uint256 _votingId, bytes _callData);
+    event Withdraw(address _to, uint256 _amount);
+    event AddProposal(uint256 _votingId, bytes _callData);
+    event SetChairman(address _from, address _to);
+    
     uint256 public totalVotings;
     uint256 public finishLockTime;
 
     IVoteToken public voteToken;
     IStaking public staking;
-
-    struct Proposal {
-        uint8 proposalType;
-        uint256 proposalNum;
-    }
     
     struct Voting {
         bool finished;
         uint256 startTime;
         uint256 votesFor;
         uint256 votesAgainst;
-        Proposal proposal;
+        bytes callData;
         mapping (address => uint256) totalVotes;        
     }
 
@@ -85,19 +83,11 @@ contract DAO is IDAO, AccessControl {
         require(block.timestamp >= votings[_votingId].startTime + finishLockTime, "U have to wait");
 
         if (votings[_votingId].votesFor > votings[_votingId].votesAgainst){
-            if (votings[_votingId].proposal.proposalType == changeRewardRate) { 
-                staking.setNewRewardRate(votings[_votingId].proposal.proposalNum);
-            }
-            else if (votings[_votingId].proposal.proposalType == changeStakeLockTime) {
-                staking.setNewStakeLockTime(votings[_votingId].proposal.proposalNum);
-            } 
-            else {
-                staking.setNewUnstakeLockTime(votings[_votingId].proposal.proposalNum);
-            }
+            address(staking).call(votings[_votingId].callData);
         }
 
         votings[_votingId].finished = true;
-        emit Finish(msg.sender, _votingId, votings[_votingId].proposal.proposalType, votings[_votingId].proposal.proposalNum);
+        emit Finish(msg.sender, _votingId, votings[_votingId].callData);
     }
 
     function withdraw() external {
@@ -115,21 +105,14 @@ contract DAO is IDAO, AccessControl {
         depositOf[msg.sender] = 0;
     }
 
-    function addProposal(uint8 _proposalType, uint256 _proposalNum) onlyRole(CHAIRMAN_ROLE) external {
-        if (_proposalType == changeRewardRate) { 
-            require(_proposalNum <= 100, "Invalid rewardRate");
-        }
-        else if (_proposalType != changeStakeLockTime && _proposalType != changeUnstakeLockTime){
-            revert("Unknown proposal");
-        }
+    function addProposal(bytes memory _callData) onlyRole(CHAIRMAN_ROLE) external {
         totalVotings++;
         votings[totalVotings].finished = false;
         votings[totalVotings].startTime = block.timestamp;
         votings[totalVotings].votesFor = 0;
         votings[totalVotings].votesAgainst = 0;
-        votings[totalVotings].proposal.proposalType = _proposalType;
-        votings[totalVotings].proposal.proposalNum = _proposalNum;
+        votings[totalVotings].callData = _callData;
 
-        emit AddProposal(totalVotings, votings[totalVotings].proposal.proposalType, votings[totalVotings].proposal.proposalNum);
+        emit AddProposal(totalVotings, votings[totalVotings].callData);
     }
 }
